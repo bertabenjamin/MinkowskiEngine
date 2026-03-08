@@ -149,6 +149,9 @@ PyTorch release notes determine which wheel channel is valid for a given release
 - `torch 2.9` on `cu130`
 - `torch 2.10` on `cu130`
 
+The GPU workflow uses self-hosted NVIDIA runners. If your fork has no online runner
+with a matching CUDA label, GPU CI skips cleanly instead of remaining queued.
+
 ### Build environment variables
 
 The build now uses environment variables instead of `setup.py install` flags:

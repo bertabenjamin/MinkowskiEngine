@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 env:
@@ -29,8 +30,97 @@ env:
     tests.python.quantization
 
 jobs:
+  discover-runners:
+    name: discover gpu runners
+    runs-on: ubuntu-latest
+    outputs:
+      has-targets: ${{ steps.plan.outputs.has-targets }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+
+    steps:
+      - name: Plan GPU matrix
+        id: plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const matrixEntries = [
+              {
+                "python-version": "3.10",
+                "torch-version": "2.5.0",
+                "torch-index": "cu124",
+                "runner-label": "cuda-12-4",
+                "cuda-home": "/usr/local/cuda-12.4",
+              },
+              {
+                "python-version": "3.11",
+                "torch-version": "2.6.0",
+                "torch-index": "cu126",
+                "runner-label": "cuda-12-6",
+                "cuda-home": "/usr/local/cuda-12.6",
+              },
+              {
+                "python-version": "3.12",
+                "torch-version": "2.7.0",
+                "torch-index": "cu128",
+                "runner-label": "cuda-12-8",
+                "cuda-home": "/usr/local/cuda-12.8",
+              },
+              {
+                "python-version": "3.13",
+                "torch-version": "2.9.0",
+                "torch-index": "cu130",
+                "runner-label": "cuda-13-0",
+                "cuda-home": "/usr/local/cuda-13.0",
+              },
+              {
+                "python-version": "3.13",
+                "torch-version": "2.10.0",
+                "torch-index": "cu130",
+                "runner-label": "cuda-13-0",
+                "cuda-home": "/usr/local/cuda-13.0",
+              },
+            ];
+
+            const runners = await github.paginate(
+              github.rest.actions.listSelfHostedRunnersForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              },
+            );
+
+            const onlineRunners = runners.filter((runner) => runner.status === "online");
+            const labelSet = new Set();
+            for (const runner of onlineRunners) {
+              for (const label of runner.labels || []) {
+                if (label.name) {
+                  labelSet.add(label.name);
+                }
+              }
+            }
+
+            const selectedEntries = matrixEntries.filter((entry) => labelSet.has(entry["runner-label"]));
+
+            core.setOutput("has-targets", selectedEntries.length > 0 ? "true" : "false");
+            core.setOutput("matrix", JSON.stringify({ include: selectedEntries }));
+
+            const lines = [];
+            lines.push(`Online self-hosted runners: ${onlineRunners.length}`);
+            lines.push(
+              `Available labels: ${Array.from(labelSet).sort().join(", ") || "<none>"}`,
+            );
+            if (selectedEntries.length === 0) {
+              lines.push("No GPU runner labels matched the validated CUDA matrix; GPU jobs will be skipped.");
+            } else {
+              lines.push(`Scheduled GPU jobs: ${selectedEntries.length}`);
+            }
+            await core.summary.addRaw(lines.join("\n")).write();
+
   linux-gpu:
     name: gpu py${{ matrix.python-version }} torch${{ matrix.torch-version }} ${{ matrix.torch-index }}
+    needs: discover-runners
+    if: needs.discover-runners.outputs.has-targets == 'true'
     runs-on:
       - self-hosted
       - linux
@@ -40,33 +130,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - python-version: "3.10"
-            torch-version: "2.5.0"
-            torch-index: "cu124"
-            runner-label: "cuda-12-4"
-            cuda-home: "/usr/local/cuda-12.4"
-          - python-version: "3.11"
-            torch-version: "2.6.0"
-            torch-index: "cu126"
-            runner-label: "cuda-12-6"
-            cuda-home: "/usr/local/cuda-12.6"
-          - python-version: "3.12"
-            torch-version: "2.7.0"
-            torch-index: "cu128"
-            runner-label: "cuda-12-8"
-            cuda-home: "/usr/local/cuda-12.8"
-          - python-version: "3.13"
-            torch-version: "2.9.0"
-            torch-index: "cu130"
-            runner-label: "cuda-13-0"
-            cuda-home: "/usr/local/cuda-13.0"
-          - python-version: "3.13"
-            torch-version: "2.10.0"
-            torch-index: "cu130"
-            runner-label: "cuda-13-0"
-            cuda-home: "/usr/local/cuda-13.0"
+      matrix: ${{ fromJson(needs.discover-runners.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v5
@@ -98,3 +162,14 @@ jobs:
           CUDA_HOME: ${{ matrix.cuda-home }}
         run: |
           uv run --no-sync --python .venv/bin/python python -m unittest $GPU_TEST_MODULES
+
+  no-gpu-runners:
+    name: no gpu runners available
+    needs: discover-runners
+    if: needs.discover-runners.outputs.has-targets != 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report skipped GPU validation
+        run: |
+          echo "Skipping GPU CI because no matching self-hosted GPU runners are available."
