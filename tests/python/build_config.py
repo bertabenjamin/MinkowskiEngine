@@ -21,13 +21,16 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
+import os
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from build_helpers import (
+    _configure_macos_platform_environment,
     _macos_llvm_runtime_library_dirs,
     _macos_openmp_flags,
+    _normalized_macos_deployment_target,
     resolve_cuda_build_enabled,
 )
 from tests.python.common import DEFAULT_PLY_PATH
@@ -81,3 +84,27 @@ class TestBuildConfig(unittest.TestCase):
                 "/opt/homebrew/opt/llvm/lib/c++",
             ],
         )
+
+    def test_normalized_macos_deployment_target(self):
+        self.assertEqual(_normalized_macos_deployment_target("15"), "15.0")
+        self.assertEqual(_normalized_macos_deployment_target("11.2.1"), "11.2")
+
+    def test_configure_macos_platform_environment_defaults_to_native_arch(self):
+        with mock.patch("build_helpers.platform.machine", return_value="arm64"):
+            with mock.patch.dict("os.environ", {}, clear=True):
+                _configure_macos_platform_environment()
+                self.assertEqual(os.environ["ARCHFLAGS"], "-arch arm64")
+                self.assertEqual(os.environ["MACOSX_DEPLOYMENT_TARGET"], "11.0")
+                self.assertEqual(os.environ["_PYTHON_HOST_PLATFORM"], "macosx-11.0-arm64")
+
+    def test_configure_macos_platform_environment_preserves_existing_archflags(self):
+        env = {
+            "ARCHFLAGS": "-arch arm64 -arch x86_64",
+            "MACOSX_DEPLOYMENT_TARGET": "13",
+        }
+        with mock.patch("build_helpers.platform.machine", return_value="arm64"):
+            with mock.patch.dict("os.environ", env, clear=True):
+                _configure_macos_platform_environment()
+                self.assertEqual(os.environ["ARCHFLAGS"], "-arch arm64 -arch x86_64")
+                self.assertEqual(os.environ["MACOSX_DEPLOYMENT_TARGET"], "13.0")
+                self.assertEqual(os.environ["_PYTHON_HOST_PLATFORM"], "macosx-13.0-arm64")

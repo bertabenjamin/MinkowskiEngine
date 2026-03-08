@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import shlex
 import shutil
 import subprocess
@@ -455,6 +456,29 @@ def _macos_llvm_runtime_library_dirs(compiler: Path | None, llvm_prefix: Path | 
     return [str(llvm_prefix / "lib"), str(llvm_prefix / "lib" / "c++")]
 
 
+def _normalized_macos_deployment_target(value: str) -> str:
+    parts = value.strip().split(".")
+    if len(parts) == 1:
+        return f"{parts[0]}.0"
+    return ".".join(parts[:2])
+
+
+def _configure_macos_platform_environment() -> None:
+    machine = platform.machine().lower()
+    if machine not in {"arm64", "x86_64"}:
+        return
+
+    if "ARCHFLAGS" not in os.environ:
+        os.environ["ARCHFLAGS"] = f"-arch {machine}"
+
+    default_target = "11.0" if machine == "arm64" else "10.9"
+    deployment_target = _normalized_macos_deployment_target(
+        os.getenv("MACOSX_DEPLOYMENT_TARGET", default_target)
+    )
+    os.environ["MACOSX_DEPLOYMENT_TARGET"] = deployment_target
+    os.environ.setdefault("_PYTHON_HOST_PLATFORM", f"macosx-{deployment_target}-{machine}")
+
+
 def build_environment_summary() -> dict[str, str | bool | None]:
     import torch
 
@@ -489,6 +513,7 @@ def _common_compile_and_link_args(use_cuda: bool) -> tuple[list[str], list[str],
         _append_unique(nvcc_flags, ["-O3", "-Xcompiler=-fno-gnu-unique"])
 
     if sys.platform == "darwin":
+        _configure_macos_platform_environment()
         llvm_prefix = _macos_llvm_prefix()
         libomp_prefix = _macos_libomp_prefix()
         active_cxx = _active_cxx_compiler()
