@@ -41,6 +41,8 @@ from tests.python.common import data_loader
 
 class TestBroadcast(unittest.TestCase):
     def test_broadcast_gpu(self):
+        if not torch.cuda.is_available():
+            return
         in_channels, D = 2, 2
         coords, feats, labels = data_loader(in_channels)
         coords, feats_glob, labels = data_loader(in_channels)
@@ -61,7 +63,7 @@ class TestBroadcast(unittest.TestCase):
         cpu_cat = broadcast_cat(input, input_glob)
 
         # Check backward
-        fn = MinkowskiBroadcastFunction()
+        fn = MinkowskiBroadcastFunction
 
         device = torch.device("cuda")
 
@@ -129,7 +131,7 @@ class TestBroadcast(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiBroadcastFunction()
+        fn = MinkowskiBroadcastFunction
         self.assertTrue(
             gradcheck(
                 fn,

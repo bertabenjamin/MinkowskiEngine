@@ -79,7 +79,7 @@ class MinkowskiPruning(MinkowskiModuleBase):
 
     def __init__(self):
         super(MinkowskiPruning, self).__init__()
-        self.pruning = MinkowskiPruningFunction()
+        self.pruning = MinkowskiPruningFunction
 
     def forward(self, input: SparseTensor, mask: torch.Tensor):
         r"""

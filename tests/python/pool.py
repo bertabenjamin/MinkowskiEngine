@@ -68,7 +68,7 @@ class TestLocalMaxPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingFunction()
+        fn = MinkowskiLocalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -94,7 +94,7 @@ class TestLocalMaxPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingFunction()
+        fn = MinkowskiLocalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -122,7 +122,7 @@ class TestLocalSumPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingFunction()
+        fn = MinkowskiLocalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -136,6 +136,8 @@ class TestLocalSumPooling(unittest.TestCase):
                 ),
             )
         )
+        if not torch.cuda.is_available():
+            return
         input = SparseTensor(feats, coords, device=0)
         output = pool(input)
         print(output)
@@ -164,7 +166,7 @@ class TestLocalSumPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingFunction()
+        fn = MinkowskiLocalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -178,6 +180,8 @@ class TestLocalSumPooling(unittest.TestCase):
                 ),
             )
         )
+        if not torch.cuda.is_available():
+            return
         input = SparseTensor(feats, coords, device=0)
         output = pool(input)
         print(output)
@@ -218,7 +222,7 @@ class TestLocalAvgPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingFunction()
+        fn = MinkowskiLocalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -244,7 +248,7 @@ class TestLocalAvgPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingFunction()
+        fn = MinkowskiLocalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -276,7 +280,7 @@ class TestPoolingTranspose(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiLocalPoolingTransposeFunction()
+        fn = MinkowskiLocalPoolingTransposeFunction
 
         self.assertTrue(
             gradcheck(
@@ -309,7 +313,7 @@ class TestPoolingTranspose(unittest.TestCase):
         output = unpool(input)
         print(output)
         # Check backward
-        fn = MinkowskiLocalPoolingTransposeFunction()
+        fn = MinkowskiLocalPoolingTransposeFunction
 
         self.assertTrue(
             gradcheck(
@@ -371,7 +375,7 @@ class TestGlobalAvgPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiGlobalPoolingFunction()
+        fn = MinkowskiGlobalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -406,7 +410,7 @@ class TestGlobalAvgPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiGlobalPoolingFunction()
+        fn = MinkowskiGlobalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -431,7 +435,7 @@ class TestGlobalAvgPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiGlobalPoolingFunction()
+        fn = MinkowskiGlobalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -490,7 +494,7 @@ class TestGlobalMaxPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiGlobalPoolingFunction()
+        fn = MinkowskiGlobalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -515,7 +519,7 @@ class TestGlobalMaxPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiGlobalPoolingFunction()
+        fn = MinkowskiGlobalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -540,7 +544,7 @@ class TestGlobalMaxPooling(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiGlobalPoolingFunction()
+        fn = MinkowskiGlobalPoolingFunction
         self.assertTrue(
             gradcheck(
                 fn,

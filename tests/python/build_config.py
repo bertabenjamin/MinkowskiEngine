@@ -21,39 +21,24 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-import inspect
-from typing import Callable, Union
+import unittest
 
-from torch.types import _TensorOrTensors
-
-from torch.autograd.gradcheck import gradcheck as _gradcheck
+from build_helpers import resolve_cuda_build_enabled
+from tests.python.common import DEFAULT_PLY_PATH
 
 
-def gradcheck(
-    func: Callable[..., Union[_TensorOrTensors]],  # See Note [VarArg of Tensors]
-    inputs: _TensorOrTensors,
-    eps: float = 1e-6,
-    atol: float = 1e-5,
-    rtol: float = 1e-3,
-    raise_exception: bool = True,
-    check_sparse_nnz: bool = False,
-    nondet_tol: float = 0.0,
-    check_undefined_grad: bool = True,
-    check_grad_dtypes: bool = False,
-) -> bool:
-    kwargs = {
-        "eps": eps,
-        "atol": atol,
-        "rtol": rtol,
-        "raise_exception": raise_exception,
-        "check_sparse_nnz": check_sparse_nnz,
-        "nondet_tol": nondet_tol,
-        "check_undefined_grad": check_undefined_grad,
-        "check_grad_dtypes": check_grad_dtypes,
-    }
-    supported_kwargs = inspect.signature(_gradcheck).parameters
-    filtered_kwargs = {
-        key: value for key, value in kwargs.items() if key in supported_kwargs
-    }
-    gradcheck_target = func.apply if hasattr(func, "apply") else func
-    return _gradcheck(gradcheck_target, inputs, **filtered_kwargs)
+class TestBuildConfig(unittest.TestCase):
+    def test_resolve_cuda_build_enabled(self):
+        self.assertFalse(
+            resolve_cuda_build_enabled("darwin", False, False, "12.8", "/usr/local/cuda")
+        )
+        self.assertFalse(
+            resolve_cuda_build_enabled("linux", True, False, "12.8", "/usr/local/cuda")
+        )
+        self.assertFalse(resolve_cuda_build_enabled("linux", False, False, None, None))
+        self.assertTrue(
+            resolve_cuda_build_enabled("linux", False, True, "12.8", "/usr/local/cuda")
+        )
+
+    def test_local_point_cloud_fixture_exists(self):
+        self.assertTrue(DEFAULT_PLY_PATH.is_file(), DEFAULT_PLY_PATH)
