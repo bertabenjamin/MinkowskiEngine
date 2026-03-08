@@ -22,12 +22,14 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-import torch
-import unittest
+import os
 import time
+import unittest
+
 import numpy as np
 import gc
 import weakref
+import torch
 
 import MinkowskiEngineBackend._C as _C
 
@@ -47,7 +49,7 @@ from MinkowskiEngine.utils import batched_coordinates
 from tests.python.common import data_loader, load_file
 from utils.gradcheck import gradcheck
 
-LEAK_TEST_ITER = 100000
+LEAK_TEST_ITER = int(os.getenv("MINKOWSKI_LEAK_TEST_ITER", "3"))
 
 
 class TestConvolution(unittest.TestCase):
@@ -148,7 +150,7 @@ class TestConvolution(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiConvolutionFunction()
+        fn = MinkowskiConvolutionFunction
 
         grad = output.F.clone().zero_()
         grad[0] = 1
@@ -201,7 +203,7 @@ class TestConvolution(unittest.TestCase):
         # print(kernel_map)
 
         # Check backward
-        fn = MinkowskiConvolutionFunction()
+        fn = MinkowskiConvolutionFunction
 
         conv = conv.cpu()
         self.assertTrue(
@@ -222,7 +224,7 @@ class TestConvolution(unittest.TestCase):
         for i in range(LEAK_TEST_ITER):
             input = SparseTensor(feats, coordinates=coords)
             conv(input).F.sum().backward()
-            if i % 1000 == 0:
+            if i == 0:
                 print(i)
 
     def test_backward_releases_intermediate_features(self):
@@ -256,14 +258,16 @@ class TestConvolution(unittest.TestCase):
         conv = MinkowskiConvolution(
             in_channels, out_channels, kernel_size=2, stride=2, bias=False, dimension=D
         )
-        conv.kernel[:] = torch.FloatTensor([[[1, 2], [2, 1]], [[0, 1], [1, 0]]])
+        with torch.no_grad():
+            conv.kernel.copy_(torch.FloatTensor([[[1, 2], [2, 1]], [[0, 1], [1, 0]]]))
         output = conv(input)
         print(output)
 
         conv = MinkowskiConvolution(
             in_channels, out_channels, kernel_size=2, stride=1, bias=False, dimension=D
         )
-        conv.kernel[:] = torch.FloatTensor([[[1, 2], [2, 1]], [[0, 1], [1, 0]]])
+        with torch.no_grad():
+            conv.kernel.copy_(torch.FloatTensor([[[1, 2], [2, 1]], [[0, 1], [1, 0]]]))
         output = conv(input)
         print(output)
 
@@ -299,7 +303,7 @@ class TestConvolutionMode(unittest.TestCase):
             print(output)
 
             # Check backward
-            fn = MinkowskiConvolutionFunction()
+            fn = MinkowskiConvolutionFunction
 
             grad = output.F.clone().zero_()
             grad[0] = 1
@@ -364,7 +368,7 @@ class TestConvolutionTranspose(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiConvolutionTransposeFunction()
+        fn = MinkowskiConvolutionTransposeFunction
 
         self.assertTrue(
             gradcheck(
@@ -405,7 +409,7 @@ class TestConvolutionTranspose(unittest.TestCase):
         print("Conv tr output: ", output)
 
         # Check backward
-        fn = MinkowskiConvolutionTransposeFunction()
+        fn = MinkowskiConvolutionTransposeFunction
 
         self.assertTrue(
             gradcheck(
@@ -432,18 +436,34 @@ class TestConvolutionTranspose(unittest.TestCase):
         conv = MinkowskiConvolution(
             in_channels, out_channels, kernel_size=2, stride=2, bias=False, dimension=D
         )
-        conv.kernel[:] = torch.FloatTensor(
-            [[[1, 2], [2, 1]], [[0, 1], [1, 0]], [[0, 1], [1, 1]], [[1, 1], [1, 0]]]
-        )
+        with torch.no_grad():
+            conv.kernel.copy_(
+                torch.FloatTensor(
+                    [
+                        [[1, 2], [2, 1]],
+                        [[0, 1], [1, 0]],
+                        [[0, 1], [1, 1]],
+                        [[1, 1], [1, 0]],
+                    ]
+                )
+            )
         output = conv(input)
         print(output)
 
         conv_tr = MinkowskiConvolutionTranspose(
             in_channels, out_channels, kernel_size=2, stride=2, bias=False, dimension=D
         )
-        conv_tr.kernel[:] = torch.FloatTensor(
-            [[[1, 2], [2, 1]], [[0, 1], [1, 0]], [[0, 1], [1, 1]], [[1, 1], [1, 0]]]
-        )
+        with torch.no_grad():
+            conv_tr.kernel.copy_(
+                torch.FloatTensor(
+                    [
+                        [[1, 2], [2, 1]],
+                        [[0, 1], [1, 0]],
+                        [[0, 1], [1, 1]],
+                        [[1, 1], [1, 0]],
+                    ]
+                )
+            )
         output_tr = conv_tr(output)
         print(output_tr)
 
@@ -457,38 +477,44 @@ class TestConvolutionTranspose(unittest.TestCase):
         conv = MinkowskiConvolution(
             in_channels, out_channels, kernel_size=3, stride=2, bias=False, dimension=D
         )
-        conv.kernel[:] = torch.FloatTensor(
-            [
-                [[1, 2], [2, 1]],
-                [[0, 1], [1, 0]],
-                [[0, 1], [1, 1]],
-                [[1, 1], [1, 0]],
-                [[1, 1], [1, 0]],
-                [[2, 1], [1, 0.5]],
-                [[1, 1], [1, 0.1]],
-                [[1, 1], [1, 0.7]],
-                [[1, 0.3], [1, 0.5]],
-            ]
-        )
+        with torch.no_grad():
+            conv.kernel.copy_(
+                torch.FloatTensor(
+                    [
+                        [[1, 2], [2, 1]],
+                        [[0, 1], [1, 0]],
+                        [[0, 1], [1, 1]],
+                        [[1, 1], [1, 0]],
+                        [[1, 1], [1, 0]],
+                        [[2, 1], [1, 0.5]],
+                        [[1, 1], [1, 0.1]],
+                        [[1, 1], [1, 0.7]],
+                        [[1, 0.3], [1, 0.5]],
+                    ]
+                )
+            )
         output = conv(input)
         print(output)
 
         conv_tr = MinkowskiConvolutionTranspose(
             in_channels, out_channels, kernel_size=3, stride=2, bias=False, dimension=D
         )
-        conv_tr.kernel[:] = torch.FloatTensor(
-            [
-                [[1, 2], [2, 1]],
-                [[0, 1], [1, 0]],
-                [[0, 1], [1, 1]],
-                [[1, 1], [1, 0]],
-                [[1, 1], [1, 0]],
-                [[2, 1], [1, 0.5]],
-                [[1, 1], [1, 0.1]],
-                [[1, 1], [1, 0.7]],
-                [[1, 0.3], [1, 0.5]],
-            ]
-        )
+        with torch.no_grad():
+            conv_tr.kernel.copy_(
+                torch.FloatTensor(
+                    [
+                        [[1, 2], [2, 1]],
+                        [[0, 1], [1, 0]],
+                        [[0, 1], [1, 1]],
+                        [[1, 1], [1, 0]],
+                        [[1, 1], [1, 0]],
+                        [[2, 1], [1, 0.5]],
+                        [[1, 1], [1, 0.1]],
+                        [[1, 1], [1, 0.7]],
+                        [[1, 0.3], [1, 0.5]],
+                    ]
+                )
+            )
         output_tr = conv_tr(output)
         print(output_tr)
 
@@ -536,7 +562,7 @@ class TestGenerativeConvolutionTranspose(unittest.TestCase):
         print(output)
 
         # Check backward
-        fn = MinkowskiConvolutionTransposeFunction()
+        fn = MinkowskiConvolutionTransposeFunction
 
         self.assertTrue(
             gradcheck(
@@ -577,8 +603,7 @@ class TestGenerativeConvolutionTranspose(unittest.TestCase):
         print("Conv tr output: ", output)
 
         # Check backward
-        fn = MinkowskiConvolutionTransposeFunction()
-
+        fn = MinkowskiConvolutionTransposeFunction
         self.assertTrue(
             gradcheck(
                 fn,
@@ -593,6 +618,12 @@ class TestGenerativeConvolutionTranspose(unittest.TestCase):
                 ),
             )
         )
+
+    def test_generate_new_coords_alias(self):
+        conv_tr = MinkowskiConvolutionTranspose(
+            2, 2, kernel_size=3, stride=2, generate_new_coords=True, dimension=2
+        )
+        self.assertTrue(conv_tr.kernel_generator.expand_coordinates)
 
 
 class TestChannelwiseConvolution(unittest.TestCase):

@@ -94,7 +94,7 @@ class MinkowskiBroadcastBase(MinkowskiModuleBase):
 
         self.operation_type = operation_type
 
-        self.broadcast = MinkowskiBroadcastFunction()
+        self.broadcast = MinkowskiBroadcastFunction
 
     def forward(self, input: SparseTensor, input_glob: SparseTensor):
         assert isinstance(input, SparseTensor)

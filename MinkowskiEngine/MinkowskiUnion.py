@@ -98,7 +98,7 @@ class MinkowskiUnion(Module):
 
     def __init__(self):
         super(MinkowskiUnion, self).__init__()
-        self.union = MinkowskiUnionFunction()
+        self.union = MinkowskiUnionFunction
 
     def forward(self, *inputs):
         r"""

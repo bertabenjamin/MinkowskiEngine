@@ -379,7 +379,7 @@ class MinkowskiInstanceNorm(MinkowskiModuleBase):
         self.weight = nn.Parameter(torch.ones(1, num_features))
         self.bias = nn.Parameter(torch.zeros(1, num_features))
         self.reset_parameters()
-        self.inst_norm = MinkowskiInstanceNormFunction()
+        self.inst_norm = MinkowskiInstanceNormFunction
 
     def __repr__(self):
         s = f"(nchannels={self.num_features})"

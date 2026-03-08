@@ -98,7 +98,7 @@ class MinkowskiInterpolation(MinkowskiModuleBase):
         MinkowskiModuleBase.__init__(self)
         self.return_kernel_map = return_kernel_map
         self.return_weights = return_weights
-        self.interp = MinkowskiInterpolationFunction()
+        self.interp = MinkowskiInterpolationFunction
 
     def forward(
         self,

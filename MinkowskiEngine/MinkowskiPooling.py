@@ -149,7 +149,7 @@ class MinkowskiPoolingBase(MinkowskiModuleBase):
         self.kernel_generator = kernel_generator
         self.pooling_mode = pooling_mode
         self.dimension = dimension
-        self.pooling = MinkowskiLocalPoolingFunction()
+        self.pooling = MinkowskiLocalPoolingFunction
 
     def forward(
         self,
@@ -581,7 +581,7 @@ class MinkowskiPoolingTranspose(MinkowskiPoolingBase):
             is_transpose,
             dimension=dimension,
         )
-        self.pooling = MinkowskiLocalPoolingTransposeFunction()
+        self.pooling = MinkowskiLocalPoolingTransposeFunction
 
 
 class MinkowskiGlobalPoolingFunction(Function):
@@ -658,7 +658,7 @@ class MinkowskiGlobalPooling(MinkowskiModuleBase):
         ), f"Mode must be an instance of PoolingMode. mode={mode}"
 
         self.pooling_mode = mode
-        self.pooling = MinkowskiGlobalPoolingFunction()
+        self.pooling = MinkowskiGlobalPoolingFunction
 
     def forward(
         self,
