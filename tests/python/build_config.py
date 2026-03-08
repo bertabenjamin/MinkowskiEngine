@@ -22,8 +22,14 @@
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
 import unittest
+from pathlib import Path
+from unittest import mock
 
-from build_helpers import resolve_cuda_build_enabled
+from build_helpers import (
+    _macos_llvm_runtime_library_dirs,
+    _macos_openmp_flags,
+    resolve_cuda_build_enabled,
+)
 from tests.python.common import DEFAULT_PLY_PATH
 
 
@@ -42,3 +48,36 @@ class TestBuildConfig(unittest.TestCase):
 
     def test_local_point_cloud_fixture_exists(self):
         self.assertTrue(DEFAULT_PLY_PATH.is_file(), DEFAULT_PLY_PATH)
+
+    def test_macos_openmp_flags_for_apple_clang(self):
+        compiler = Path("/usr/bin/clang++")
+        with mock.patch(
+            "build_helpers._compiler_version_output",
+            return_value="Apple clang version 17.0.0",
+        ):
+            self.assertEqual(_macos_openmp_flags(compiler), ["-Xpreprocessor", "-fopenmp"])
+
+    def test_macos_openmp_flags_for_llvm_clang(self):
+        compiler = Path("/opt/homebrew/opt/llvm/bin/clang++")
+        with mock.patch(
+            "build_helpers._compiler_version_output",
+            return_value="clang version 22.1.0",
+        ):
+            self.assertEqual(_macos_openmp_flags(compiler), ["-fopenmp"])
+
+    def test_macos_llvm_runtime_library_dirs_only_when_using_homebrew_llvm(self):
+        llvm_prefix = Path("/opt/homebrew/opt/llvm")
+        self.assertEqual(
+            _macos_llvm_runtime_library_dirs(Path("/usr/bin/clang++"), llvm_prefix),
+            [],
+        )
+        self.assertEqual(
+            _macos_llvm_runtime_library_dirs(
+                Path("/opt/homebrew/opt/llvm/bin/clang++"),
+                llvm_prefix,
+            ),
+            [
+                "/opt/homebrew/opt/llvm/lib",
+                "/opt/homebrew/opt/llvm/lib/c++",
+            ],
+        )

@@ -76,7 +76,7 @@ Current limits:
 - `ninja`
 - A BLAS implementation, typically `openblas`
 - Linux: a C++17 compiler toolchain and the CUDA toolkit when building with GPU support
-- macOS: CPU-only builds, with Homebrew `openblas`, `libomp`, and `llvm`
+- macOS: CPU-only builds, with Homebrew `openblas` and `libomp`
 
 ## Installation
 
@@ -94,7 +94,7 @@ sudo apt-get install -y build-essential libopenblas-dev
 macOS:
 
 ```bash
-brew install openblas libomp llvm
+brew install openblas libomp
 ```
 
 Shared steps:

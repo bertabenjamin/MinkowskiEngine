@@ -408,6 +408,53 @@ def _macos_libomp_prefix() -> Path | None:
     return None
 
 
+def _active_cxx_compiler() -> Path | None:
+    for env_var in ("CXX", "CC"):
+        value = os.getenv(env_var)
+        if not value:
+            continue
+        command = shlex.split(value)
+        if not command:
+            continue
+        resolved = shutil.which(command[0]) or command[0]
+        return Path(resolved)
+
+    for candidate in ("clang++", "c++"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return Path(resolved)
+    return None
+
+
+def _compiler_version_output(compiler: Path | None) -> str:
+    if compiler is None:
+        return ""
+    try:
+        return subprocess.check_output(
+            [str(compiler), "--version"], text=True, stderr=subprocess.STDOUT
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
+
+
+def _macos_openmp_flags(compiler: Path | None) -> list[str]:
+    if "apple clang" in _compiler_version_output(compiler).lower():
+        return ["-Xpreprocessor", "-fopenmp"]
+    return ["-fopenmp"]
+
+
+def _macos_llvm_runtime_library_dirs(compiler: Path | None, llvm_prefix: Path | None) -> list[str]:
+    if compiler is None or llvm_prefix is None:
+        return []
+
+    compiler_path = compiler.expanduser().resolve(strict=False)
+    llvm_root = llvm_prefix.expanduser().resolve(strict=False)
+    if compiler_path != llvm_root and llvm_root not in compiler_path.parents:
+        return []
+
+    return [str(llvm_prefix / "lib"), str(llvm_prefix / "lib" / "c++")]
+
+
 def build_environment_summary() -> dict[str, str | bool | None]:
     import torch
 
@@ -444,16 +491,11 @@ def _common_compile_and_link_args(use_cuda: bool) -> tuple[list[str], list[str],
     if sys.platform == "darwin":
         llvm_prefix = _macos_llvm_prefix()
         libomp_prefix = _macos_libomp_prefix()
+        active_cxx = _active_cxx_compiler()
         if libomp_prefix is None:
             raise RuntimeError(
                 "libomp was not found. Install it with Homebrew and retry: brew install libomp"
             )
-
-        if "CXX" not in os.environ and llvm_prefix is not None:
-            clang = llvm_prefix / "bin" / "clang++"
-            if clang.exists():
-                os.environ["CXX"] = str(clang)
-                os.environ.setdefault("CC", str(clang))
 
         _append_unique(cxx_flags, ["-stdlib=libc++"])
         sdkroot = _macos_sdkroot()
@@ -465,11 +507,8 @@ def _common_compile_and_link_args(use_cuda: bool) -> tuple[list[str], list[str],
         _append_unique(include_dirs, [str(libomp_prefix / "include")])
         _append_unique(library_dirs, [str(libomp_prefix / "lib")])
         extra_link_args.append("-lomp")
-        if llvm_prefix is not None:
-            llvm_lib = llvm_prefix / "lib"
-            llvm_cxx_lib = llvm_prefix / "lib" / "c++"
-            _append_unique(library_dirs, [str(llvm_lib), str(llvm_cxx_lib)])
-        _append_unique(cxx_flags, ["-fopenmp"])
+        _append_unique(library_dirs, _macos_llvm_runtime_library_dirs(active_cxx, llvm_prefix))
+        _append_unique(cxx_flags, _macos_openmp_flags(active_cxx))
     else:
         _append_unique(cxx_flags, ["-fopenmp"])
 
