@@ -159,6 +159,7 @@ The build now uses environment variables instead of `setup.py install` flags:
 - `MINKOWSKI_BLAS_INCLUDE_DIRS=/path/one,/path/two` overrides BLAS header discovery
 - `MINKOWSKI_BLAS_LIBRARY_DIRS=/path/one,/path/two` overrides BLAS library discovery
 - Existing toolchain variables such as `CUDA_HOME`, `CXX`, `MAX_JOBS`, `USE_NINJA`, and `TORCH_CUDA_ARCH_LIST` are still honored
+- On macOS, the runtime defaults `OMP_NUM_THREADS=1` unless you override it explicitly
 
 ### API compatibility notes
 
