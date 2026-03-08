@@ -26,6 +26,8 @@ import torch
 import unittest
 import time
 import numpy as np
+import gc
+import weakref
 
 import MinkowskiEngineBackend._C as _C
 
@@ -222,6 +224,27 @@ class TestConvolution(unittest.TestCase):
             conv(input).F.sum().backward()
             if i % 1000 == 0:
                 print(i)
+
+    def test_backward_releases_intermediate_features(self):
+        in_channels, out_channels, D = 2, 2, 2
+        coords, feats, labels = data_loader(in_channels)
+        feats = feats.double()
+        feats.requires_grad_()
+
+        conv = MinkowskiConvolution(
+            in_channels, out_channels, kernel_size=2, stride=1, bias=False, dimension=D
+        ).double()
+
+        input = SparseTensor(feats, coordinates=coords)
+        hidden = conv(input)
+        hidden_ref = weakref.ref(hidden.F)
+        output = conv(hidden)
+        output.F.sum().backward()
+
+        del output, hidden, input, feats
+        gc.collect()
+
+        self.assertIsNone(hidden_ref())
 
     def test_analytic(self):
         print(f"{self.__class__.__name__}: test")

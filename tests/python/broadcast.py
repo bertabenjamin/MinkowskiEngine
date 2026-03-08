@@ -23,9 +23,12 @@
 # of the code.
 import torch
 import unittest
+import gc
+import weakref
 
 from MinkowskiEngine import (
     SparseTensor,
+    MinkowskiConvolution,
     MinkowskiGlobalSumPooling,
     MinkowskiBroadcastFunction,
     MinkowskiBroadcastAddition,
@@ -102,6 +105,32 @@ class TestBroadcast(unittest.TestCase):
                 ),
             )
         )
+
+    def test_backward_releases_intermediate_features(self):
+        in_channels, D = 2, 2
+        coords, feats, labels = data_loader(in_channels)
+        feats = feats.double()
+        feats.requires_grad_()
+
+        conv = MinkowskiConvolution(
+            in_channels, in_channels, kernel_size=2, stride=1, bias=False, dimension=D
+        ).double()
+        pool = MinkowskiGlobalSumPooling()
+        broadcast_add = MinkowskiBroadcastAddition()
+
+        input = SparseTensor(feats, coords)
+        hidden = conv(input)
+        hidden_ref = weakref.ref(hidden.F)
+        input_glob = pool(hidden)
+        input_glob_ref = weakref.ref(input_glob.F)
+        output = broadcast_add(hidden, input_glob)
+        output.F.sum().backward()
+
+        del output, input_glob, hidden, input, feats
+        gc.collect()
+
+        self.assertIsNone(hidden_ref())
+        self.assertIsNone(input_glob_ref())
 
     def test_broadcast(self):
         in_channels, D = 2, 2
