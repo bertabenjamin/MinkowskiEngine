@@ -149,8 +149,11 @@ PyTorch release notes determine which wheel channel is valid for a given release
 - `torch 2.9` on `cu130`
 - `torch 2.10` on `cu130`
 
-The GPU workflow uses self-hosted NVIDIA runners. If your fork has no online runner
-with a matching CUDA label, GPU CI skips cleanly instead of remaining queued.
+The GPU workflow uses self-hosted NVIDIA runners. On push and pull request runs it is
+opt-in: set repository variable `MINKOWSKI_GPU_CI_ENABLED=true` and define
+`MINKOWSKI_GPU_RUNNER_LABELS` as a comma-separated label list such as
+`cuda-12-8,cuda-13-0`. Without that configuration, GPU CI skips cleanly instead of
+remaining queued. Manual `workflow_dispatch` runs can pass `runner_labels` directly.
 
 ### Build environment variables
 
