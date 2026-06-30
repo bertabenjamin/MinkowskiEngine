@@ -227,6 +227,39 @@ class TestConvolution(unittest.TestCase):
             if i == 0:
                 print(i)
 
+    def test_kernel_size_one_uses_direct_mm(self):
+        print(f"{self.__class__.__name__}: test_kernel_size_one_uses_direct_mm")
+        in_channels, out_channels, D = 2, 3, 2
+        coords, feats, labels = data_loader(in_channels)
+        feats = feats.double()
+
+        for device in ["cpu"] + (["cuda"] if torch.cuda.is_available() else []):
+            with self.subTest(device=device):
+                device_type = torch.device(device)
+                input_feats = feats.clone().detach().to(device_type).requires_grad_()
+                input_coords = coords.to(device_type)
+                conv = MinkowskiConvolution(
+                    in_channels,
+                    out_channels,
+                    kernel_size=1,
+                    stride=1,
+                    bias=True,
+                    dimension=D,
+                ).double().to(device_type)
+                self.assertTrue(conv.use_mm)
+
+                input = SparseTensor(input_feats, coordinates=input_coords)
+                output = conv(input)
+                expected = input_feats.mm(conv.kernel) + conv.bias
+
+                self.assertTrue(torch.allclose(output.F, expected))
+                self.assertEqual(output.coordinate_map_key, input.coordinate_map_key)
+
+                output.F.sum().backward()
+                self.assertIsNotNone(input_feats.grad)
+                self.assertIsNotNone(conv.kernel.grad)
+                self.assertIsNotNone(conv.bias.grad)
+
     def test_backward_releases_intermediate_features(self):
         in_channels, out_channels, D = 2, 2, 2
         coords, feats, labels = data_loader(in_channels)

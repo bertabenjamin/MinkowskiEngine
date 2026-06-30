@@ -36,6 +36,13 @@
 #include <torch/extension.h>
 #include <torch/script.h>
 
+#include <thrust/execution_policy.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/pair.h>
+#include <thrust/reduce.h>
+#include <thrust/sort.h>
+#include <thrust/tuple.h>
+
 namespace minkowski {
 
 #define BLOCK_SIZE 128

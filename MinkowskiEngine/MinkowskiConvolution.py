@@ -321,10 +321,10 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
             out_coordinate_map_key = _get_coordinate_map_key(
                 input, coordinates, self.kernel_generator.expand_coordinates
             )
-        outfeat = self.conv.apply(
-            input.F,
-            self.kernel,
-            self.kernel_generator,
+            outfeat = self.conv.apply(
+                input.F,
+                self.kernel,
+                self.kernel_generator,
                 self.convolution_mode,
                 input.coordinate_map_key,
                 out_coordinate_map_key,
